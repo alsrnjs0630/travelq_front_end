@@ -1,0 +1,1 @@
+export const API_SEVER_HOST = "http://localhost:8080";
