@@ -15,16 +15,23 @@ type PageParam = {
 export const getAskList = async (pageParam: PageParam ) => {
     const {page, size, title, author} = pageParam;
 
-    const res = await axios.get(`${prefix}/list`, {
-        params: {
-            page: page,
-            size: size,
-            title: title,
-            author: author
+    try{
+        const res = await axios.get(`${prefix}/list`, {
+            params: {
+                page: page,
+                size: size,
+                title: title,
+                author: author
+            }
+        });
+
+        console.log("getAskList 응답 데이터", res.data)
+
+        return res.data;
+    } catch (error: any) {
+        if (error.response) {
+
         }
-    });
+    }
 
-    console.log("getAskList 응답 데이터", res.data)
-
-    return res.data;
 }

@@ -30,32 +30,47 @@ const PageComponent = ({pageData, movePage} : PageComponentProps) => {
         <>
             <nav aria-label="Page navigation">
                 <ul className="pagination justify-content-center">
-                    {/*이전 버튼*/}
-                    {pageData.prev ? (
-                        <li className="page-item disabled"
-                        onClick={() => movePage(pageData.prevPage)}>
+                    {/* 이전 버튼 */}
+                    <li className={`page-item ${!pageData.prev ? "disabled" : ""}`}>
+                        <button
+                            className="page-link"
+                            onClick={() => pageData.prev && movePage(pageData.prevPage)}
+                            disabled={!pageData.prev}
+                        >
                             이전
-                        </li>
-                    ) : null}
-                    {/*페이지 번호*/}
+                        </button>
+                    </li>
+
+                    {/* 페이지 번호 */}
                     {pageData.pageNumbers.map((pageNum) => (
                         <li
                             key={pageNum}
-                            className={ `page-item ${pageData.currentPage === pageNum ||
-                             (location.pathname === "/asks" && pageData.currentPage === 0 && pageNum === 1)} ? active : null`}
-                            onClick={() => movePage(pageNum)}>
-                            {pageNum}
+                            className={`page-item ${
+                                pageData.currentPage === pageNum ? "active" : ""
+                            }`}
+                        >
+                            <button
+                                className="page-link"
+                                onClick={() => movePage(pageNum)}
+                            >
+                                {pageNum}
+                            </button>
                         </li>
                     ))}
-                    {/*다음 버튼*/}
-                    {pageData.next ? (
-                        <li className="page-item disabled"
-                            onClick={() => movePage(pageData.nextPage)}>
+
+                    {/* 다음 버튼 */}
+                    <li className={`page-item ${!pageData.next ? "disabled" : ""}`}>
+                        <button
+                            className="page-link"
+                            onClick={() => pageData.next && movePage(pageData.nextPage)}
+                            disabled={!pageData.next}
+                        >
                             다음
-                        </li>
-                    ) : null}
+                        </button>
+                    </li>
                 </ul>
             </nav>
+
         </>
     );
 }

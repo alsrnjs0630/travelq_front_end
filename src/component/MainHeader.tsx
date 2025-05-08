@@ -1,9 +1,42 @@
 import Link from "next/link";
 import Image from "next/image";
+import {useSelector, useDispatch} from "react-redux";
+import {useEffect} from "react";
 
 const HOST_SERVER = "http://localhost:3000";
+const BACKEND_SERVER = "http://localhost:8080";
 
 export default function MainHeader() {
+    // OAuth2 로그인 팝업창
+    const openOAuth = (provider: string) => {
+        window.open(
+            `${BACKEND_SERVER}/oauth2/authorization/${provider}`,
+            `${provider}login`,
+            "width=500, height=700, left=400, top=100"
+        )
+    }
+
+    useEffect(() => {
+        const handleMessage = (event: MessageEvent) => {
+            if (event.origin !== "http://localhost:8080")
+                return;
+
+            if (event.data === "LOGIN_SUCCESS") {
+                console.log("로그인 성공! 메인 페이지로 이동");
+                window.location.href = "/";
+            } else if (event.data === "NEED_MORE_INFO") {
+                console.log("추가 정보 입력 필요 페이지로 이동");
+                window.location.href = "/login/signup";
+            }
+        };
+
+        window.addEventListener("message", handleMessage);
+
+        return () => {
+            window.removeEventListener("message", handleMessage);
+        };
+    }, []);
+
     return (
         <>
             {/* 로고 영역 */}
@@ -30,25 +63,76 @@ export default function MainHeader() {
                     style={{
                         display: "flex",
                         alignItems: "center",
-                        justifyContent: "left",
-                        gap: "30px",
+                        justifyContent: "space-between",
                         color: "white",
                         maxWidth: "1080px",
                         margin: "0 auto",
                         height: "100%",
                         fontWeight: "bold",
                         paddingLeft: "20px",
+                        paddingRight: "20px",
                     }}
                 >
-                    <Link href="/recommendPost" className="nav-link-hover">
-                        추천 게시판
-                    </Link>
-                    <Link href={"/asks"} className="nav-link-hover">
-                        질문 게시판
-                    </Link>
-                    <Link href={HOST_SERVER} className="nav-link-hover">
-                        공지사항
-                    </Link>
+                    {/* 왼쪽 메뉴 */}
+                    <div style={{display: "flex", gap: "30px"}}>
+                        <Link href="/recommendPost" className="nav-link-hover">
+                            추천 게시판
+                        </Link>
+                        <Link href="/asks" className="nav-link-hover">
+                            질문 게시판
+                        </Link>
+                        <Link href={HOST_SERVER} className="nav-link-hover">
+                            공지사항
+                        </Link>
+                    </div>
+
+                    {/* 오른쪽 로그인 */}
+                    <div>
+                        <div className="dropdown" style={{position: 'relative', display: 'inline-block'}}>
+                            <button
+                                className="btn btn-primary dropdown-toggle"
+                                type="button"
+                                id="loginDropdownButton"
+                                aria-expanded="false"
+                                style={{
+                                    backgroundColor: "#0203fd",
+                                    borderColor: "#0203fd",
+                                    color: "#ffffff",
+                                    fontWeight: "bold"
+                                }}
+                            >
+                                로그인
+                            </button>
+
+                            <ul
+                                className="dropdown-menu"
+                                aria-labelledby="loginDropdownButton"
+                            >
+                                <li>
+                                    <button className={"mb-2"} onClick={() => openOAuth("google")}>
+                                        <Image src="/GoogleLoginImage.png" alt={"구글 로그인"} width={200} height={40}/>
+                                    </button>
+                                </li>
+                                <li>
+                                    <button className={"mb-2"} onClick={() => openOAuth("kakao")}>
+                                        <Image src="/KakaoLoginImage.png" alt={"카카오 로그인"} width={200} height={40}/>
+                                    </button>
+                                </li>
+                                <li>
+                                    <button onClick={() => openOAuth("naver")}>
+                                        <Image src="/NaverLoginImage.png" alt={"네이버 로그인"} width={200} height={40}/>
+                                    </button>
+                                </li>
+                            </ul>
+
+                            <style jsx>{`
+                                .dropdown:hover .dropdown-menu {
+                                    display: block;
+                                    margin-top: 0;
+                                }
+                            `}</style>
+                        </div>
+                    </div>
                 </nav>
             </div>
         </>
