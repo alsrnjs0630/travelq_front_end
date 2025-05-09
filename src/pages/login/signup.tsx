@@ -1,7 +1,11 @@
 import React, {useState} from "react";
 import {createMember} from "@/apis/LoginAPI";
+import {useRouter} from "next/router";
 
 const Signup = () => {
+    // 페이지 이동 함수
+    const router = useRouter();
+    // 추가 정보 초기 상태
     const initState = {
         name: '',
         email: '',
@@ -26,6 +30,7 @@ const Signup = () => {
             const res = await createMember(userData);
             alert("회원 가입 성공!!");
             console.log("등록된 회원 정보:", res);
+            router.push("/");
         } catch (error: unknown) {
             if (error instanceof Error) {
                 alert("회원 가입 실패: " + error.message);
