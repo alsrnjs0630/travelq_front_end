@@ -6,6 +6,8 @@ import {getAskList} from "@/apis/AskApi"
 import {GetServerSideProps} from "next";
 import {useRouter} from "next/router";
 import {useEffect, useState} from "react";
+import {useSelector} from "react-redux";
+import {RootState} from "@/store/store";
 
 type Props = {
     serverData: AskPageData
@@ -40,11 +42,12 @@ type PageDataType = {
 // PgaeDTO에 담겨있는 contents (AskResponseDTO)
 type AskItem = {
     id: number,
-    memberId: number,
     title: string,
     author: string,
     content: string,
     viewCount: number,
+    reportCount: number,
+    state: string,
     createdAt: Date,
     updatedAt: Date
 };
@@ -88,15 +91,14 @@ export const getServerSideProps: GetServerSideProps<Props> = async (context) => 
         }
     } catch (err) {
         console.log("에러 발생 : ", err);
-        return {
-            notFound: true,
-        };
+        return {notFound: true};
     }
 };
 
 export default function AskPostHome({serverData}: Props) {
     const router = useRouter();
-    const { moveToAskList } = useCustomMove();
+    const {moveToAskList} = useCustomMove();
+    const loginState = useSelector((state: RootState) => state.loginState.value);
 
     // 상태 필드
     const [searchType, setSearchType] = useState<string>('title');
@@ -115,6 +117,16 @@ export default function AskPostHome({serverData}: Props) {
         });
     }
 
+    // 글쓰기 버튼
+    const handleWritePost = () => {
+        if (loginState === 'auth') {
+            router.push('/asks/createAsk');
+        } else {
+            alert('로그인이 필요한 기능입니다!');
+        }
+    }
+
+    // 질문 게시판 페이지 데이터
     const pageData: PageDataType = {
         pageNumbers: serverData.pageNumbers,
         prev: serverData.prev,
@@ -128,9 +140,9 @@ export default function AskPostHome({serverData}: Props) {
     };
 
     useEffect(() => {
-        if(searchType === 'title') {
+        if (searchType === 'title') {
             setSearchAuthor('');
-        } else if(searchType === 'author') {
+        } else if (searchType === 'author') {
             setSearchTitle('')
         }
     }, [searchType])
@@ -155,15 +167,21 @@ export default function AskPostHome({serverData}: Props) {
                     className="form-control w-25 me-2"
                     placeholder="검색어를 입력하세요"
                     value={searchType === 'title' ? searchTitle : searchAuthor}
-                    onChange={(e) => {if (searchType === 'title') {
-                        setSearchTitle(e.target.value);
-                    } else {
-                        setSearchAuthor(e.target.value);
-                    } }}
+                    onChange={(e) => {
+                        if (searchType === 'title') {
+                            setSearchTitle(e.target.value);
+                        } else {
+                            setSearchAuthor(e.target.value);
+                        }
+                    }}
                 />
 
                 <button className="btn btn-primary" onClick={handleSearch}>
                     검색
+                </button>
+                <button className="btn btn-primary ms-2"
+                        onClick={() => handleWritePost()}>
+                    글쓰기
                 </button>
             </div>
 
@@ -179,21 +197,28 @@ export default function AskPostHome({serverData}: Props) {
                 </tr>
                 </thead>
                 <tbody>
-                {serverData?.contents?.map((post) => (
-                    <tr key={post.id}>
-                        <td>{post.id}</td>
-                        <td className="text-start">
-                            <Link href={`/asks/${post.id}`} className="text-decoration-none text-dark">
-                                {post.title}
-                            </Link>
-                        </td>
-                        <td>{post.author}</td>
-                        <td>{new Date(post.createdAt).toISOString().slice(0, 10)}</td>
-                        <td>{post.viewCount}</td>
-                    </tr>
-                )) || <tr>
-                    <td colSpan={5}>게시글이 없습니다.</td>
-                </tr>}
+                {(() => {
+                    const filteredPosts = serverData.contents.filter(post => post.state === "NORMAL");
+                    return filteredPosts.length > 0 ? (
+                        filteredPosts.map((post) => (
+                            <tr key={post.id}>
+                                <td>{post.id}</td>
+                                <td className="text-start">
+                                    <Link href={`/asks/${post.id}`} className="text-decoration-none text-dark">
+                                        {post.title}
+                                    </Link>
+                                </td>
+                                <td>{post.author}</td>
+                                <td>{new Date(post.createdAt).toISOString().slice(0, 10)}</td>
+                                <td>{post.viewCount}</td>
+                            </tr>
+                        ))
+                    ) : (
+                        <tr>
+                            <td colSpan={5}>게시글이 없습니다.</td>
+                        </tr>
+                    );
+                })()}
                 </tbody>
             </table>
 

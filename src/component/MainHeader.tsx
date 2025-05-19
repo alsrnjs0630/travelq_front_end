@@ -19,11 +19,15 @@ export default function MainHeader() {
     const handleLogin = () => {
         dispatch(loggedIn());
         localStorage.setItem("loginState", "auth");
+        console.log("로그인 성공!");
     }
     // 로그아웃 핸들
     const handleLogout = () => {
         dispatch(loggedOut());
-        localStorage.removeItem("loginState");
+        localStorage.setItem("loginState", "guest");
+        localStorage.removeItem("accessToken");
+        console.log("로그아웃 성공!");
+        router.push("/");
     }
 
     // OAuth2 로그인 팝업창
@@ -44,16 +48,18 @@ export default function MainHeader() {
         const handleMessage = (event: MessageEvent) => {
             if (event.origin !== "http://localhost:8080")
                 return;
-            if (event.data === "LOGIN_SUCCESS") {
+            if (event.data && event.data.type === "LOGIN_SUCCESS") {
                 // 로그인 상태 변경
                 handleLogin();
+                // 토큰 저장
+                localStorage.setItem("accessToken", event.data.token);
+
                 console.log("로그인 성공! 메인 페이지로 이동");
-                // window.location.href = "/";
+                console.log("토큰 발급 성공! : ", event.data.token);
                 router.push("/");
-            } else if (event.data === "NEED_MORE_INFO") {
+            } else if (event.data && event.data.type === "NEED_MORE_INFO") {
                 console.log("추가 정보 입력 필요 페이지로 이동");
-                // window.location.href = "/login/signup";
-                router.push("/login/signup")
+                router.push("/login/signup");
             }
         };
 
