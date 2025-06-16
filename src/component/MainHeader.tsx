@@ -108,7 +108,7 @@ export default function MainHeader() {
                 >
                     {/* 왼쪽 메뉴 */}
                     <div style={{display: "flex", gap: "30px"}}>
-                        <Link href="/recommendPost" className="nav-link-hover">
+                        <Link href="/recommends" className="nav-link-hover">
                             추천 게시판
                         </Link>
                         <Link href="/asks" className="nav-link-hover">

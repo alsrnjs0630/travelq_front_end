@@ -1,44 +1,47 @@
-import {GetServerSideProps} from "next";
-import {checkAuth, deleteAsk, detailAsk, reportAsk} from "@/apis/AskApi";
-import {useRouter} from "next/router";
 import React, {useEffect, useState} from "react";
-import {ApiResponse} from "@/pages/utils/commonInterface";
-import {createAskCmt, deleteAskCmt, reportAskCmt} from "@/apis/AskCmtApi";
+import {GetServerSideProps} from "next";
+import {detailRecommendPost, deleteRecommendPost, updateAuthCheck} from "@/apis/RecommendApi";
+import {useRouter} from "next/router";
+import 'bootstrap/dist/css/bootstrap.min.css';
+import {createRecommendCmt, deleteRecommendCmt, reportRecommendCmt} from "@/apis/RecommendCmtApi";
 
 type Props = {
-    serverData: AskItem
+    serverData : RecommendItem
 };
 
-type AskItem = {
-    id: number;
-    title: string;
-    author: string;
-    content: string;
-    viewCount: number;
-    reportCount: number;
-    state: string;
-    cmts: AskCmt[];
-    createdAt: Date;
-    updatedAt: Date;
+type RecommendItem = {
+    id : number;
+    memberId : number;
+    author : string;
+    title : string;
+    content : string;
+    likeCount : number;
+    viewCount : number;
+    state : string;
+    reportCount : number;
+    images : string[];
+    recommendCmts : RecommendComment[];
+    createdAt : Date;
+    updatedAt : Date;
 };
 
-// 질문 게시글 댓글
-type AskCmt = {
+// RecommendCmts
+type RecommendComment = {
     id: number;
-    askId: number;
+    recommendId: number;
     memberId: number;
     author: string;
     content: string;
     reportCount: number;
     state: string;
-    createdAt: string;
-    updatedAt: string;
+    createdAt: Date;
+    updatedAt: Date;
 };
 
-type CmtRequest = {
-    askId: number;
+type RecommendCommentRequest = {
+    recommendId: number;
     content: string;
-}
+};
 
 export const getServerSideProps: GetServerSideProps<Props> = async (context) => {
     try {
@@ -50,16 +53,16 @@ export const getServerSideProps: GetServerSideProps<Props> = async (context) => 
             console.log("잘못된 url 접근입니다.")
             return {notFound: true}
         }
-        // id 타입 number로 변환
+        // id 타입 number로 변환 (url 파라미터에서 가져오는 정보라 string으로 되어있음)
         const postId = parseInt(id, 10);
+
         if (isNaN(postId)) {
             console.log("잘못된 게시글 아이디입니다.");
             return {notFound: true}
         }
         // api 호출(게시글 상세)
-        const serverData = await detailAsk(postId)
-        console.log("현재 게시글 정보: ", serverData)
-        console.log("게시글 생성일 : ", serverData.createdAt)
+        const serverData = await detailRecommendPost(postId);
+        console.log("현재 게시글 정보: ", serverData);
 
         return {
             props: {
@@ -72,149 +75,120 @@ export const getServerSideProps: GetServerSideProps<Props> = async (context) => 
     }
 }
 
-const DetailAskPost = ({serverData}: Props) => {
+const DetailRecommendPost = ({serverData} : Props) => {
     const router = useRouter();
     const postId = serverData.id;
     const loginState = localStorage.getItem("loginState");
 
-    // 댓글 작성 폼
-    const cmtInit: CmtRequest = {
-        askId: postId,
+    // 댓글 초기화
+    const commentInit: RecommendCommentRequest = {
+        recommendId: postId,
         content: ''
     };
-    const [cmt, setCmt] = useState({...cmtInit});
 
+    // 댓글 state
+    const [comment , setComment] = useState({...commentInit});
+
+    // 이미지 슬라이드를 위한 bootstrap 임포트
     useEffect(() => {
         // @ts-ignore
-        import("bootstrap/dist/js/bootstrap.bundle.min.js");
-    }, [])
+        import('bootstrap/dist/js/bootstrap.bundle.min.js');
+    }, []);
 
-    // 삭제 버튼 핸들러
-    const handleDelete = async () => {
+    // 게시글 수정 권한 확인
+    const handleEditAuthCheck = async (id: number) => {
+        // 로그인 체크
+        if (loginState !== "auth") {
+            return alert("로그인이 필요합니다.")
+        }
+
         try {
-            if (loginState === 'guest' || loginState == null) {
-                return alert("로그인이 필요합니다.")
+            const res = await updateAuthCheck(id);
+
+            // 수정 권한 X
+            if (!res.success) {
+                return alert(res.message);
             }
 
-            const res: ApiResponse<unknown | null> = await deleteAsk(postId);
-            if (!res.success) {
-                // 삭제 권한이 없는 유저인 경우
-                return alert(res.message);
-            } else {
-                // 게시글 작성자가 삭제하는 경우
-                alert(res.message);
-                return router.push("/asks");
-            }
+            // 수정 권한 O - 수정 페이지로 이동
+            return router.push(`/recommends/${id}/edit`);
+
         } catch (error) {
-            console.log("알 수 없는 오류 발생 : ", error)
-            alert("네트워크 상태를 확인해주세요.");
+            console.log("수정 권한 확인 중 오류 발생 : ", error);
+            return alert("서버 오류 발생. 잠시 후 다시 시도 해 주세요");
         }
     }
 
-    // 수정 버튼 핸들러 (수정 페이지로 이동)
-    const handleEdit = async () => {
-        try {
-            if (loginState === 'guest' || loginState == null) {
-                return alert("로그인이 필요합니다.")
-            }
-
-            const res = await checkAuth(postId);
-
-            // 수정 권한이 없는 경우
-            if (!res.success) {
-                return alert(res.message);
-            } else {
-                // 수정 권한이 있는 경우 수정 페이지로 이동
-                console.log(res.message);
-                return router.push(`/asks/${postId}/edit`);
-            }
-        } catch (error) {
-            if (error instanceof Error) {
-                alert("에러 발생 : " + error.message);
-                console.error("에러 내용:", error.message);
-            } else {
-                alert("알 수 없는 에러가 발생했습니다.");
-            }
-        }
-    }
-
-    // 신고 버튼
-    const handlePostReport = async () => {
-        // 로그인 유무 확인
-        if (loginState === "guest") {
+    // 게시글 삭제 버튼
+    const handlePostDelete = async (id: number) => {
+        // 로그인 검사
+        const loginState = localStorage.getItem("loginState");
+        if (loginState !== "auth" || loginState === null) {
             return alert("로그인이 필요합니다.");
         }
-
-        // 신고 api 호출
         try {
-            const res = await reportAsk(postId);
-            return alert(res.message);
+            const res = await deleteRecommendPost(id);
+            alert(res.message);
+            return router.push("/recommends");
         } catch (error) {
-            if (error instanceof Error) {
-                alert("에러 발생 : " + error.message);
-                console.error("에러 내용:", error.message);
-            } else {
-                alert("알 수 없는 에러가 발생했습니다.");
-            }
+            console.log("게시글 삭제 오류 : ", error);
+            return alert("게시글 삭제 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.")
         }
     }
 
     // 댓글 입력 감지
-    const handleCmtChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const handleCommentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         const {name, value} = e.target;
-        setCmt((prev) => ({
+        setComment((prev) => ({
             ...prev,
-            [name]: value,
+            [name] : value
         }))
     }
 
-    // 댓글 작성 버튼
-    const handleCreateCmt = async (cmt: CmtRequest) => {
-        if (loginState === "guest") {
-            return alert("로그인이 필요합니다.");
+    // 댓글 등록 핸들러
+    const handleCreateComment = async () => {
+        // 로그인 체크
+        if (loginState !== "auth") {
+            return alert("로그인이 필요합니다.")
         }
+
         try {
-            const res = await createAskCmt(cmt);
+            const res = await createRecommendCmt(comment);
             return alert(res.message);
         } catch (error) {
-            if (error instanceof Error) {
-                return alert(error.message);
-            } else {
-                return alert("서버가 불안정합니다. 잠시 후 다시 시도해주세요");
-            }
+            console.log("댓글 작성 중 에러 발생 : ", error);
+            return alert("서버 오류 발생. 잠시 후 다시 시도해주세요.")
         }
     }
 
-    // 댓글 삭제 버튼
-    const handleDeleteAskCmt = async (id : number) => {
-        if (loginState === "guest") {
-            return alert("로그인이 필요합니다.");
+    // 댓글 신고 핸들러
+    const handleReportComment =  async (commentId: number) => {
+        // 로그인 체크
+        if (loginState !== "auth") {
+            return alert("로그인이 필요합니다.")
         }
+
         try {
-            const res = await deleteAskCmt(id);
+            const res = await reportRecommendCmt(commentId);
             return alert(res.message);
         } catch (error) {
-            if (error instanceof Error) {
-                return alert(error.message);
-            } else {
-                return alert("서버가 불안정합니다. 잠시 후 다시 시도해주세요");
-            }
+            console.log("댓글 작성 중 에러 발생 : ", error);
+            return alert(error);
         }
     }
-    // 댓글 신고 버튼
-    const handleReportAskCmt = async (id : number) => {
-        if (loginState === "guest") {
-            return alert("로그인이 필요합니다.");
+    // 댓글 삭제 핸들러
+    const handleDeleteComment = async () => {
+        // 로그인 체크
+        if (loginState !== "auth") {
+            return alert("로그인이 필요합니다.")
         }
+
         try {
-            const res = await reportAskCmt(id);
+            const res = await deleteRecommendCmt(postId);
             return alert(res.message);
         } catch (error) {
-            if (error instanceof Error) {
-                return alert(error.message);
-            } else {
-                return alert("서버가 불안정합니다. 잠시 후 다시 시도해주세요");
-            }
+            console.log("댓글 작성 중 에러 발생 : ", error);
+            return alert("서버 오류 발생. 잠시 후 다시 시도해주세요.")
         }
     }
 
@@ -233,7 +207,7 @@ const DetailAskPost = ({serverData}: Props) => {
                         </span>
                         <div className={"ms-auto"}>
                             <span className={"me-4"}>
-                                작성일: {new Date(serverData.createdAt).toISOString().slice(0, 10)}
+                                작성일: {serverData.createdAt ? new Date(serverData.createdAt).toISOString().slice(0, 10) : "관리자 작성"}
                             </span>
                             <span>
                                 조회수: {serverData.viewCount}
@@ -245,14 +219,67 @@ const DetailAskPost = ({serverData}: Props) => {
                 {/* 목록 테이블 head/body 구분선과 유사한 수평선 */}
                 <hr className="mb-4"/>
 
+                <div id="carouselExampleIndicators" className="carousel slide" data-bs-ride="carousel">
+                    {/* 인디케이터 */}
+                    <div className="carousel-indicators">
+                        {serverData.images.map((_, index) => (
+                            <button
+                                key={index}
+                                type="button"
+                                data-bs-target="#carouselExampleIndicators"
+                                data-bs-slide-to={index}
+                                className={index === 0 ? 'active' : ''}
+                                aria-current={index === 0 ? 'true' : undefined}
+                                aria-label={`Slide ${index + 1}`}
+                            ></button>
+                        ))}
+                    </div>
+
+                    {/* 이미지 */}
+                    <div className="carousel-inner">
+                        {serverData.images.map((imageUrl, index) => (
+                            <div
+                                key={index}
+                                className={`carousel-item ${index === 0 ? 'active' : ''}`}
+                            >
+                                <img
+                                    src={imageUrl}
+                                    className="d-block w-100"
+                                    alt={`Slide ${index + 1}`}
+                                />
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* 이전/다음 버튼 */}
+                    <button
+                        className="carousel-control-prev"
+                        type="button"
+                        data-bs-target="#carouselExampleIndicators"
+                        data-bs-slide="prev"
+                    >
+                        <span className="carousel-control-prev-icon" aria-hidden="true"></span>
+                        <span className="visually-hidden">Previous</span>
+                    </button>
+                    <button
+                        className="carousel-control-next"
+                        type="button"
+                        data-bs-target="#carouselExampleIndicators"
+                        data-bs-slide="next"
+                    >
+                        <span className="carousel-control-next-icon" aria-hidden="true"></span>
+                        <span className="visually-hidden">Next</span>
+                    </button>
+                </div>
+
+
                 <div className={"d-flex justify-content-between align-items-center"}>
-                    <div className="post-content">
+                    <div className="post-content mt-4">
                         <p>
                             {serverData.content}
                         </p>
                     </div>
-                    <button type="button" className="btn btn-link ms-auto"
-                        onClick={() => handlePostReport()}>
+                    <button type="button" className="btn btn-link ms-auto">
                         신고
                     </button>
                 </div>
@@ -260,11 +287,10 @@ const DetailAskPost = ({serverData}: Props) => {
 
             <div className="d-flex justify-content-end mt-3">
                 <button className="btn btn-primary me-2"
-                        onClick={() => router.push("/asks")}>
+                        onClick={() => router.push("/recommends")}>
                     목록
                 </button>
-                <button className="btn btn-secondary me-2"
-                        onClick={() => handleEdit()}>
+                <button className="btn btn-secondary me-2" onClick={() => handleEditAuthCheck(serverData.id)}>
                     수정
                 </button>
                 <button type="button" className="btn btn-danger" data-bs-toggle="modal" data-bs-target="#CheckDelete">
@@ -274,14 +300,14 @@ const DetailAskPost = ({serverData}: Props) => {
 
             <hr className="my-5"/>
 
-            {/* 댓글 영역 */}
+            {/*댓글 영역*/}
             <div className="comment-section mt-5">
                 <h5 className="fw-bold mb-3">댓글</h5>
 
-                {/* 댓글 리스트 */}
+                {/*댓글 리스트*/}
                 <div className="comment-list">
-                    {serverData.cmts && serverData.cmts.length > 0 ? (
-                        serverData.cmts.map((cmt) => (
+                    {serverData.recommendCmts && serverData.recommendCmts.length > 0 ? (
+                        serverData.recommendCmts.map((cmt) => (
                             <div key={cmt.id} className="border rounded p-3 mb-3 bg-light">
                                 <div className="d-flex justify-content-between align-items-center mb-2">
                                     <span>
@@ -304,12 +330,10 @@ const DetailAskPost = ({serverData}: Props) => {
                                     </div>
                                     {cmt.reportCount < 10 && cmt.state !== "DELETED" ?
                                         <div className="ms-auto d-flex gap-2">
-                                            <button type="button" className="btn btn-link"
-                                                    onClick={() => handleReportAskCmt(cmt.id)}>
+                                            <button type="button" className="btn btn-link" onClick={() => handleReportComment(cmt.id)}>
                                                 신고
                                             </button>
-                                            <button type="button" className="btn btn-link"
-                                                    onClick={() => handleDeleteAskCmt(cmt.id)}>
+                                            <button type="button" className="btn btn-link" onClick={() => handleDeleteComment()}>
                                                 삭제
                                             </button>
                                         </div>
@@ -323,7 +347,7 @@ const DetailAskPost = ({serverData}: Props) => {
                     )}
                 </div>
 
-                {/* 댓글 입력창 */}
+                {/*댓글 입력창*/}
                 <div className="comment-form mt-4">
                     <h6 className="mb-2">댓글 작성</h6>
                     <textarea
@@ -331,12 +355,12 @@ const DetailAskPost = ({serverData}: Props) => {
                         rows={3}
                         placeholder="댓글을 입력하세요"
                         name={"content"}
-                        onChange={handleCmtChange}
+                        onChange={handleCommentChange}
                     />
                     <div className={"text-end"}>
                         <button
                             className="btn btn-outline-primary"
-                            onClick={() => handleCreateCmt(cmt)}
+                            onClick={() => handleCreateComment()}
                         >
                             등록
                         </button>
@@ -362,7 +386,7 @@ const DetailAskPost = ({serverData}: Props) => {
                                 취소
                             </button>
                             <button type="button" className="btn btn-primary" data-bs-dismiss="modal"
-                                    onClick={() => handleDelete()}>
+                                    onClick={() => handlePostDelete(serverData.id)}>
                                 확인
                             </button>
                         </div>
@@ -373,4 +397,4 @@ const DetailAskPost = ({serverData}: Props) => {
     )
 }
 
-export default DetailAskPost;
+export default DetailRecommendPost;

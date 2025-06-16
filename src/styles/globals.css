@@ -69,3 +69,9 @@ a {
 .nav-link-hover:hover {
   color: #ffc107; /* 부트스트랩 'warning' 계열 색상, 원하는 색으로 바꿔도 됨 */
 }
+
+.carousel-inner {
+  max-width: 100%;
+  max-height: 700px;
+  overflow: hidden;
+}

@@ -1,20 +1,20 @@
 import Link from "next/link";
-import PageComponent from "@/component/PageComponent";
-import useCustomMove from "@/hooks/useCustomMove";
-import {getAskList} from "@/apis/AskApi"
 import {GetServerSideProps} from "next";
+import {getRecommendList} from "@/apis/RecommendApi";
 import {useRouter} from "next/router";
-import {useEffect, useState} from "react";
+import useCustomMove from "@/hooks/useCustomMove";
 import {useSelector} from "react-redux";
 import {RootState} from "@/store/store";
+import {useEffect, useState} from "react";
+import PageComponent from "@/component/PageComponent";
 
 type Props = {
-    serverData: AskPageData;
-};
+    serverData : RcmPageData;
+}
 
 // PageDTO 응답 결과
-type AskPageData = {
-    contents: AskItem[],
+type RcmPageData = {
+    contents: RecommendItem[],
     pageNumbers: number[],
     prev: boolean,
     next: boolean,
@@ -26,36 +26,41 @@ type AskPageData = {
     search?: SearchType
 };
 
+// Pageable
 type PageDataType = {
-    pageNumbers: number[],
-    prev: boolean,
-    next: boolean,
-    totalCount: number,
-    prevPage: number,
-    nextPage: number,
-    totalPage: number,
-    currentPage: number,
-    search: SearchType
+    pageNumbers: number[];
+    prev: boolean;
+    next: boolean;
+    totalCount: number;
+    prevPage: number;
+    nextPage: number;
+    totalPage: number;
+    currentPage: number;
+    search: SearchType;
 }
 
-// PgaeDTO에 담겨있는 contents (AskResponseDTO)
-type AskItem = {
-    id: number,
-    title: string,
-    author: string,
-    content: string,
-    viewCount: number,
-    reportCount: number,
-    state: string,
-    createdAt: Date,
-    updatedAt: Date
+// RcmResponseDTO
+type RecommendItem = {
+    id : number;
+    memberId : number;
+    author : string;
+    title : string;
+    content : string;
+    likeCount : number;
+    viewCount : number;
+    state : string;
+    reportCount : number;
+    images : string[];
+    recommendCmts : RecommendComment[];
+    createdAt : Date;
+    updatedAt : Date;
 };
 
 // 검색 조건
 type SearchType = {
-    title: string,
-    author: string
-};
+    title : string;
+    author : string;
+}
 
 // api 파라미터
 type PageParams = {
@@ -64,6 +69,19 @@ type PageParams = {
     title?: string,
     author?: string
 };
+
+// RecommendCmts
+type RecommendComment = {
+    id: number;
+    recommendId: number;
+    memberId: number;
+    author: string;
+    content: string;
+    reportCount: number;
+    state: string;
+    createdAt: Date;
+    updatedAt: Date;
+}
 
 export const getServerSideProps: GetServerSideProps<Props> = async (context) => {
     try {
@@ -79,7 +97,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async (context) => 
             author
         };
 
-        const serverData = await getAskList(PageParams)
+        const serverData = await getRecommendList(PageParams)
 
         console.log("응답 데이터" + serverData)
 
@@ -94,9 +112,9 @@ export const getServerSideProps: GetServerSideProps<Props> = async (context) => 
     }
 };
 
-export default function AskPostHome({serverData}: Props) {
+export default function RecommendPostHome({serverData} : Props) {
     const router = useRouter();
-    const {moveToAskList} = useCustomMove();
+    const { moveToRecommendList } = useCustomMove();
     const loginState = useSelector((state: RootState) => state.loginState.value);
 
     // 상태 필드
@@ -107,7 +125,7 @@ export default function AskPostHome({serverData}: Props) {
     // 검색 버튼 동작 함수
     const handleSearch = () => {
         router.push({
-            pathname: '/asks',
+            pathname: '/recommends',
             query: {
                 page: serverData.currentPage,
                 title: searchTitle,
@@ -119,7 +137,7 @@ export default function AskPostHome({serverData}: Props) {
     // 글쓰기 버튼
     const handleWritePost = () => {
         if (loginState === 'auth') {
-            router.push('/asks/createAsk');
+            router.push('/recommends/createPost');
         } else {
             alert('로그인이 필요한 기능입니다!');
         }
@@ -148,7 +166,7 @@ export default function AskPostHome({serverData}: Props) {
 
     return (
         <div className="custom-MainContainer mt-4">
-            <h3 className="mb-4 fw-bold text-center">질문 게시판</h3>
+            <h3 className="mb-4 fw-bold text-center">추천 게시판</h3>
 
             {/* 검색 필드 */}
             <div className="d-flex justify-content-end mb-3">
@@ -184,46 +202,48 @@ export default function AskPostHome({serverData}: Props) {
                 </button>
             </div>
 
-            {/* 데이터 출력 필드 */}
             <table className="table table-bordered table-hover text-center">
                 <thead className="table-primary">
                 <tr>
                     <th>번호</th>
-                    <th>제목</th>
+                    <th className="text-start">제목</th>
                     <th>작성자</th>
                     <th>작성일</th>
                     <th>조회수</th>
+                    <th>좋아요</th>
                 </tr>
                 </thead>
                 {/* 게시글 상태 "정상(NORMAL)" && 신고 수 10 미만인 게시글만 출력 */}
                 <tbody>
                 {(() => {
-                    const filteredPosts = serverData.contents.filter(post => post.state === "NORMAL" && post.reportCount < 10);
-                    return filteredPosts.length > 0 ? (
-                        filteredPosts.map((post) => (
+                    const fileredPost = serverData.contents.filter(post => post.state === "NORMAL" && post.reportCount <= 10)
+                    return fileredPost.length > 0 ? (
+                        fileredPost.map(post => (
                             <tr key={post.id}>
                                 <td>{post.id}</td>
                                 <td className="text-start">
-                                    <Link href={`/asks/${post.id}`} className="text-decoration-none text-dark">
+                                    <Link href={`/recommends/${post.id}`} className="text-decoration-none text-dark">
                                         {post.title}
                                     </Link>
                                 </td>
                                 <td>{post.author}</td>
                                 <td>{new Date(post.createdAt).toISOString().slice(0, 10)}</td>
                                 <td>{post.viewCount}</td>
+                                <td>{post.likeCount}</td>
                             </tr>
                         ))
-                    ) : (
-                        <tr>
-                            <td colSpan={5}>게시글이 없습니다.</td>
-                        </tr>
-                    );
+                    ) :
+                    <tr>
+                        <td colSpan={5}>게시글이 없습니다.</td>
+                    </tr>
                 })()}
                 </tbody>
             </table>
 
             {/* 페이지네이션 */}
-            <PageComponent pageData={pageData} movePage={moveToAskList}/>
+            <nav aria-label="Page navigation">
+                <PageComponent pageData={pageData} movePage={moveToRecommendList}/>
+            </nav>
         </div>
     );
 }

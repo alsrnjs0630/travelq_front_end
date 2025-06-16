@@ -2,11 +2,11 @@ import {useRouter} from "next/router";
 import {useMemo} from "react";
 
 type QueryType = {
-    page: number,
-    size?: number
-    title?: string,
-    author?: string
-}
+    page: number;
+    size?: number;
+    title?: string;
+    author?: string;
+};
 
 const useCustomMove = () => {
     const router = useRouter();
@@ -63,7 +63,12 @@ const useCustomMove = () => {
         moveToList("/asks", pageParam);
     }
 
-    return {moveToAskList, currentPage, pageSize, queryDefault};
+    // 추천 게시판 목록 페이지 이동 함수
+    const moveToRecommendList = (pageParam?: number) => {
+        moveToList("/recommends", pageParam);
+    };
+
+    return {moveToAskList, moveToRecommendList, currentPage, pageSize, queryDefault};
 }
 
 export default useCustomMove;

@@ -7,12 +7,13 @@ const prefix = `${API_SEVER_HOST}/api/asks`;
 
 // 게시글 목록 요청 param 타입 지정
 type PageParam = {
-    page : number,
-    size? : number,
-    title? : string,
-    author? : string
+    page : number;
+    size? : number;
+    title? : string;
+    author? : string;
 };
 
+// PageDTO
 type AskPageData = {
     contents: AskItem[];
     pageNumbers: number[];
@@ -26,7 +27,7 @@ type AskPageData = {
     search?: SearchType;
 };
 
-// PageDTO의 content 타입
+// PageDTO의 content 타입 (AskResponseDTO)
 type AskItem = {
     id: number;
     title: string;
@@ -35,6 +36,7 @@ type AskItem = {
     viewCount: number;
     reportCount: number;
     state: string;
+    cmts : AskCmt[];
     createdAt: Date;
     updatedAt: Date;
 };
@@ -45,11 +47,24 @@ type SearchType = {
     author: string;
 };
 
-// 질문 게시글 데이터
+// 질문 게시글 데이터 (AskCreateDTO)
 type PostData = {
-    title: string,
-    content: string,
-}
+    title: string;
+    content: string;
+};
+
+// 질문 게시글 댓글
+type AskCmt = {
+    id: number;
+    askId: number;
+    memberId: number;
+    author: string;
+    content: string;
+    reportCount: number;
+    state: string;
+    createdAt: string;
+    updatedAt: string;
+};
 
 
 // 질문 게시글 목록 api
@@ -73,7 +88,7 @@ export const getAskList = async (pageParam: PageParam ) : Promise<AskPageData> =
     } catch (error) {
         throw apiException(error);
     }
-}
+};
 
 // 질문 게시글 등록 api
 export const createAsk = async (postData: PostData) : Promise<ApiResponse<PostData>> => {
@@ -99,7 +114,7 @@ export const createAsk = async (postData: PostData) : Promise<ApiResponse<PostDa
     } catch (error) {
         throw apiException(error);
     }
-}
+};
 
 // 질문 게시글 상세 api
 export const detailAsk = async (id : number) : Promise<AskItem> => {
@@ -112,7 +127,7 @@ export const detailAsk = async (id : number) : Promise<AskItem> => {
     } catch (error) {
         throw apiException(error);
     }
-}
+};
 
 // 질문 게시글 삭제 api
 export const deleteAsk = async (id : number) : Promise<ApiResponse<unknown | null>> => {
@@ -131,7 +146,7 @@ export const deleteAsk = async (id : number) : Promise<ApiResponse<unknown | nul
     } catch (error) {
         throw apiException(error);
     }
-}
+};
 
 // 질문 게시글 수정 api
 export const updateAsk = async (id : number, updatedPost : PostData) : Promise<ApiResponse<PostData>> => {
@@ -157,7 +172,7 @@ export const updateAsk = async (id : number, updatedPost : PostData) : Promise<A
     } catch (error) {
         throw apiException(error);
     }
-}
+};
 
 // 수정 권한 확인
 export const checkAuth = async (id: number) : Promise<ApiResponse<unknown | null>> => {
@@ -176,4 +191,26 @@ export const checkAuth = async (id: number) : Promise<ApiResponse<unknown | null
     } catch (error) {
         throw apiException(error);
     }
-}
+};
+
+// 질문 게시글 신고 api
+export const reportAsk = async (id: number) : Promise<ApiResponse<null | unknown>> => {
+    // JWT
+    const accessToken = localStorage.getItem("accessToken");
+
+    // 게시글 신고 서버 요청
+    // post 요청에선 data를 보내야함. 없다면 빈 객체 {} 전송
+    console.log("게시글 신고 요청")
+    try {
+        const res : AxiosResponse<ApiResponse<null | unknown>> = await axios.post(`${prefix}/${id}/report`, {}, {
+            headers : {
+                Authorization: `Bearer ${accessToken}`
+            }
+        });
+
+        return res.data;
+
+    } catch (error) {
+        throw apiException(error);
+    }
+};
